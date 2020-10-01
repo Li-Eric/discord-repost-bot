@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import re
 import json
-from enum import Enum
 
 img_regex = re.compile(r".+\.(png|jpeg|gif|jpg)$")
 url_regex = re.compile(
@@ -12,7 +11,7 @@ url_regex = re.compile(
 bot = commands.Bot(command_prefix="$", case_insensitive=True)
 
 
-class MediaType(Enum):
+class MediaType:
     Link = "links"
     Photo = "photos"
 
@@ -22,9 +21,9 @@ def set_channel(ctx, channel_type: MediaType, channel_id: discord.TextChannel):
     with open("channel_ids.json", "r") as channel_file:
         channel_ids = json.load(channel_file)
     if server_id in channel_ids:
-        channel_ids[server_id][channel_type] = channel_id.id
+        channel_ids[server_id][str(channel_type)] = channel_id.id
     else:
-        channel_ids[server_id] = {channel_type: channel_id.id}
+        channel_ids[server_id] = {str(channel_type): channel_id.id}
     with open("channel_ids.json", "w") as channel_file:
         json.dump(channel_ids, channel_file)
 
@@ -53,6 +52,7 @@ async def set_photo(ctx, channel_id: discord.TextChannel):
     )
 
 
+@bot.listen("on_ready")
 async def on_ready():
     print("Logged on as {0}!".format(bot.user))
     await bot.change_presence(
@@ -60,6 +60,18 @@ async def on_ready():
     )
 
 
+@bot.event
+async def on_command_error(ctx, error):
+    await ctx.send(f"Error: `{error}`")
+
+
+async def get_media(media_type: MediaType, message, channel_ids, guild_id):
+    if media_type in channel_ids[guild_id]:
+        channel = bot.get_channel(channel_ids[guild_id][media_type])
+        await channel.send(message)
+
+
+@bot.listen("on_message")
 async def on_message(message):
     if message.author.id == bot.user.id:
         return
@@ -70,21 +82,12 @@ async def on_message(message):
         return
     for attachment in message.attachments:
         if img_regex.match(attachment.url):
-            if MediaType.Photo in channel_ids[guild_id]:
-                channel = bot.get_channel(channel_ids[guild_id][MediaType.Photo])
-                await channel.send(attachment.url)
+            await get_media(MediaType.Photo, attachment.url, channel_ids, guild_id)
     if img_regex.match(message.content):
-        if MediaType.Photo in channel_ids[guild_id]:
-            channel = bot.get_channel(channel_ids[guild_id][MediaType.Photo])
-            await channel.send(message.content)
+        await get_media(MediaType.Photo, message.content, channel_ids, guild_id)
     elif url_regex.match(message.content):
-        if MediaType.Link in channel_ids[guild_id]:
-            channel = bot.get_channel(channel_ids[guild_id][MediaType.Link])
-            await channel.send(message.content)
+        await get_media(MediaType.Link, message.content, channel_ids, guild_id)
 
-
-bot.add_listener(on_ready)
-bot.add_listener(on_message, "on_message")
 
 with open("token.txt", "r") as f:
     token = f.read()
