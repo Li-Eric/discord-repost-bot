@@ -1,3 +1,4 @@
 .vscode/
 token.txt
 __pycache__/
+channel_ids.json
