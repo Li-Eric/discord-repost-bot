@@ -9,7 +9,7 @@ url_regex = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 )
 
-bot = commands.Bot(command_prefix="$")
+bot = commands.Bot(command_prefix="$", case_insensitive=True)
 
 
 class MediaType(Enum):
@@ -17,7 +17,7 @@ class MediaType(Enum):
     Photo = "photos"
 
 
-def set_stuff(ctx, channel_type: MediaType, channel_id: discord.TextChannel):
+def set_channel(ctx, channel_type: MediaType, channel_id: discord.TextChannel):
     server_id = str(ctx.message.guild.id)
     with open("channel_ids.json", "r") as channel_file:
         channel_ids = json.load(channel_file)
@@ -35,7 +35,7 @@ async def set_link(ctx, channel_id: discord.TextChannel):
     if not ctx.message.author.guild_permissions.administrator:
         await ctx.send(f"🚧 Admins only 🚧")
         return
-    set_stuff(ctx, MediaType.Link, channel_id)
+    set_channel(ctx, MediaType.Link, channel_id)
     await ctx.send(
         f"{ctx.author.mention} The links channel has been set to <#{channel_id.id}>"
     )
@@ -47,7 +47,7 @@ async def set_photo(ctx, channel_id: discord.TextChannel):
     if not ctx.message.author.guild_permissions.administrator:
         await ctx.send(f"🚧 Admins only 🚧")
         return
-    set_stuff(ctx, MediaType.Photo, channel_id)
+    set_channel(ctx, MediaType.Photo, channel_id)
     await ctx.send(
         f"{ctx.author.mention} The photos channel has been set to <#{channel_id.id}>"
     )
