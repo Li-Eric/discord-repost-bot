@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import re
 import json
+from enum import Enum
 
 img_regex = re.compile(r".+\.(png|jpeg|gif|jpg)$")
 url_regex = re.compile(
@@ -11,14 +12,19 @@ url_regex = re.compile(
 bot = commands.Bot(command_prefix="$")
 
 
-def set_stuff(ctx, channel_name, channel_id: discord.TextChannel):
+class MediaType(Enum):
+    Link = "links"
+    Photo = "photos"
+
+
+def set_stuff(ctx, channel_type: MediaType, channel_id: discord.TextChannel):
     server_id = str(ctx.message.guild.id)
     with open("channel_ids.json", "r") as channel_file:
         channel_ids = json.load(channel_file)
     if server_id in channel_ids:
-        channel_ids[server_id][channel_name] = channel_id.id
+        channel_ids[server_id][channel_type] = channel_id.id
     else:
-        channel_ids[server_id] = {channel_name: channel_id.id}
+        channel_ids[server_id] = {channel_type: channel_id.id}
     with open("channel_ids.json", "w") as channel_file:
         json.dump(channel_ids, channel_file)
 
@@ -29,7 +35,7 @@ async def set_link(ctx, channel_id: discord.TextChannel):
     if not ctx.message.author.guild_permissions.administrator:
         await ctx.send(f"🚧 Admins only 🚧")
         return
-    set_stuff(ctx, "links", channel_id)
+    set_stuff(ctx, MediaType.Link, channel_id)
     await ctx.send(
         f"{ctx.author.mention} The links channel has been set to <#{channel_id.id}>"
     )
@@ -41,7 +47,7 @@ async def set_photo(ctx, channel_id: discord.TextChannel):
     if not ctx.message.author.guild_permissions.administrator:
         await ctx.send(f"🚧 Admins only 🚧")
         return
-    set_stuff(ctx, "photos", channel_id)
+    set_stuff(ctx, MediaType.Photo, channel_id)
     await ctx.send(
         f"{ctx.author.mention} The photos channel has been set to <#{channel_id.id}>"
     )
@@ -64,16 +70,16 @@ async def on_message(message):
         return
     for attachment in message.attachments:
         if img_regex.match(attachment.url):
-            if "photos" in channel_ids[guild_id]:
-                channel = bot.get_channel(channel_ids[guild_id]["photos"])
+            if MediaType.Photo in channel_ids[guild_id]:
+                channel = bot.get_channel(channel_ids[guild_id][MediaType.Photo])
                 await channel.send(attachment.url)
     if img_regex.match(message.content):
-        if "photos" in channel_ids[guild_id]:
-            channel = bot.get_channel(channel_ids[guild_id]["photos"])
+        if MediaType.Photo in channel_ids[guild_id]:
+            channel = bot.get_channel(channel_ids[guild_id][MediaType.Photo])
             await channel.send(message.content)
     elif url_regex.match(message.content):
-        if "links" in channel_ids[guild_id]:
-            channel = bot.get_channel(channel_ids[guild_id]["links"])
+        if MediaType.Link in channel_ids[guild_id]:
+            channel = bot.get_channel(channel_ids[guild_id][MediaType.Link])
             await channel.send(message.content)
 
 
